@@ -48,7 +48,7 @@ https://www.python.org/downloads/
 ## 2. Clone the Repository
 
 ```
-[git clone https://github.com/your-username/k12online-auto-joiner.git](https://github.com/EquilByte/attendant_k12.git)
+git clone https://github.com/EquilByte/attendant_k12.git
 cd k12online-auto-joiner
 ```
 

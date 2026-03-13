@@ -49,7 +49,7 @@ https://www.python.org/downloads/
 
 ```
 git clone https://github.com/EquilByte/attendant_k12.git
-cd k12online-auto-joiner
+cd attendant_k12
 ```
 
 ---

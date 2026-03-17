@@ -17,9 +17,9 @@ ACCOUNT_PASSWORD = "Viettel2025@"
 DAY = 4
 
 # What time?
-TARGET_HOUR = 19
-TARGET_MINUTE = 15
-TARGET_SECOND = 55
+TARGET_HOUR = 7
+TARGET_MINUTE = 10
+TARGET_SECOND = 30
 
 MAX_ATTEMPTS = 3 # 1 initial attempt + 2 retries
 RETRY_DELAY = 60 # Seconds to wait before retrying if "Vào học" isn't found
@@ -50,6 +50,8 @@ def attempt_to_join_class(driver, wait, short_wait):
         # STEP 1: Go to K12Online
         print("1. Opening K12Online...")
         driver.get("https://k12online.vn/")
+
+        time.sleep(5)
         
         # Check if we need to log in
         try:
@@ -152,14 +154,14 @@ def main():
         success = attempt_to_join_class(driver, wait, short_wait)
         
         if success:
-            print("\n🎉 SUCCESS! Joined the class.")
+            print("\n[{now.strftime('%H:%M:%S')}] 🎉 SUCCESS! Joined the class.")
             break
         else:
             if attempt < MAX_ATTEMPTS:
-                print(f"\n⚠️ Failed to join. Teacher might be late. Retrying in {RETRY_DELAY} seconds...")
+                print(f"\n[{now.strftime('%H:%M:%S')}] ⚠️ Failed to join. Teacher might be late. Retrying in {RETRY_DELAY} seconds...")
                 time.sleep(RETRY_DELAY)
             else:
-                print("\n❌ Max retries reached. Could not join the class.")
+                print("\n[{now.strftime('%H:%M:%S')}] ❌ Max retries reached. Could not join the class.")
 
     # 4. Keep browser open until manually closed
     print("\n---------------------------------------------------------")

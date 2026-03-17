@@ -9,32 +9,47 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.common.exceptions import TimeoutException
 
 # --- CONFIGURATION ---
-ACCOUNT_USERNAME = "username"
-ACCOUNT_PASSWORD = "password@"
+ACCOUNT_USERNAME = "hungnk1905"
+ACCOUNT_PASSWORD = "Viettel2025@"
+
+# 2 = Monday, 3 = Tuesday, 4 = Wednesday, 5 = Thursday, 6 = Friday, 7 = Saturday, 8 = Sunday
+DAY = 7
+
 TARGET_HOUR = 7
 TARGET_MINUTE = 10
 TARGET_SECOND = 30
+
 MAX_ATTEMPTS = 3 # 1 initial attempt + 2 retries
 RETRY_DELAY = 60 # Seconds to wait before retrying if "Vào học" isn't found
 # ---------------------
 
 def wait_until_target_time():
-    """Calculates time until 07:10:30 AM and pauses the script until then."""
+    """Calculates time until the specific DAY and TIME and pauses the script until then."""
+    if DAY < 2 or DAY > 8:
+        raise ValueError("Invalid DAY in configuration. Must be between 2 (Monday) and 8 (Sunday).")
+
     now = datetime.datetime.now()
-    
-    # Create the target time for today
     target_time = now.replace(hour=TARGET_HOUR, minute=TARGET_MINUTE, second=TARGET_SECOND, microsecond=0)
     
-    # If the target time has already passed today, set it for tomorrow
-    if now >= target_time:
-        target_time += datetime.timedelta(days=1)
+    # Python's weekday(): Monday is 0, Sunday is 6. 
+    # K12Online's DAY: Monday is 2, Sunday is 8.
+    target_weekday = DAY - 2 
+    
+    days_ahead = target_weekday - now.weekday()
+    
+    # If the target day has already passed this week, OR it's today but the time has already passed, set it to next week
+    if days_ahead < 0 or (days_ahead == 0 and now >= target_time):
+        days_ahead += 7
         
+    target_time += datetime.timedelta(days=days_ahead)
+    
     wait_seconds = (target_time - now).total_seconds()
     
     print(f"[{now.strftime('%H:%M:%S')}] Script started.")
-    print(f"-> Waiting until {target_time.strftime('%Y-%m-%d %H:%M:%S')} to launch the browser...")
+    print(f"-> Selected Day: {DAY} (K12 Format)")
+    print(f"-> Waiting until {target_time.strftime('%A, %Y-%m-%d %H:%M:%S')} to launch the browser...")
     
-    # Sleep until the target time
+    # Sleep until the exact target time
     time.sleep(wait_seconds)
     print(f"\n[{datetime.datetime.now().strftime('%H:%M:%S')}] Time to join the class! Launching browser...")
 
@@ -45,7 +60,7 @@ def attempt_to_join_class(driver, wait, short_wait):
         print("1. Opening K12Online...")
         driver.get("https://k12online.vn/")
         
-        # Check if we need to log in (in case session is cached, though unlikely on first launch)
+        # Check if we need to log in
         try:
             username_input = WebDriverWait(driver, 5).until(EC.presence_of_element_located((By.NAME, "fields[username]")))
             print("2. Logging in...")
@@ -73,19 +88,19 @@ def attempt_to_join_class(driver, wait, short_wait):
         wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "table.table-pupil")))
         time.sleep(2) 
 
-        # STEP 3: Find classes in the Saturday column (Thứ 7 is data-code="7")
-        print("4. Searching for Saturday classes...")
-        saturday_xpath = "//td[@data-code='7']//div[contains(@class, 'popover-integrated')]"
-        saturday_classes = driver.find_elements(By.XPATH, saturday_xpath)
+        # STEP 3: Find classes in the specific DAY column
+        print(f"4. Searching for classes on day {DAY}...")
+        day_xpath = f"//td[@data-code='{DAY}']//div[contains(@class, 'popover-integrated')]"
+        day_classes = driver.find_elements(By.XPATH, day_xpath)
 
-        if not saturday_classes:
-            print("No classes found on Saturday.")
+        if not day_classes:
+            print(f"No classes found for Day {DAY}.")
             return False
 
-        print(f"Found {len(saturday_classes)} class(es). Checking them...")
+        print(f"Found {len(day_classes)} class(es). Checking them...")
 
-        # STEP 4: Iterate through Saturday classes to find "Vào học"
-        for index, cls in enumerate(saturday_classes):
+        # STEP 4: Iterate through classes to find "Vào học"
+        for index, cls in enumerate(day_classes):
             driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", cls)
             time.sleep(1)
             
@@ -104,7 +119,7 @@ def attempt_to_join_class(driver, wait, short_wait):
                 print(" -> Found 'Vào học' button! Clicking it...")
                 driver.execute_script("arguments[0].click();", join_btn)
                 
-                # K12Online opens Zoom in a new tab. Switch to it:
+                # K12Online opens Zoom/Classroom in a new tab. Switch to it:
                 time.sleep(3)
                 if len(driver.window_handles) > 1:
                     driver.switch_to.window(driver.window_handles[-1])
@@ -126,7 +141,7 @@ def attempt_to_join_class(driver, wait, short_wait):
         return False
 
 def main():
-    # 1. Wait all night until target time
+    # 1. Wait until target day and time
     wait_until_target_time()
     
     # 2. Setup WebDriver
@@ -147,10 +162,10 @@ def main():
             break
         else:
             if attempt < MAX_ATTEMPTS:
-                print(f"\nFailed to join. Teacher might be late. Retrying in {RETRY_DELAY} seconds...")
+                print(f"\n⚠️ Failed to join. Teacher might be late. Retrying in {RETRY_DELAY} seconds...")
                 time.sleep(RETRY_DELAY)
             else:
-                print("\nMax retries reached. Could not join the class.")
+                print("\n❌ Max retries reached. Could not join the class.")
 
     # 4. Keep browser open until manually closed
     print("\n---------------------------------------------------------")

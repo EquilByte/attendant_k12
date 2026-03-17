@@ -12,42 +12,33 @@ from selenium.common.exceptions import TimeoutException
 ACCOUNT_USERNAME = "hungnk1905"
 ACCOUNT_PASSWORD = "Viettel2025@"
 
+# Which column to check on the timetable?
 # 2 = Monday, 3 = Tuesday, 4 = Wednesday, 5 = Thursday, 6 = Friday, 7 = Saturday, 8 = Sunday
-DAY = 7
+DAY = 4
 
-TARGET_HOUR = 7
-TARGET_MINUTE = 10
-TARGET_SECOND = 30
+# What time?
+TARGET_HOUR = 19
+TARGET_MINUTE = 15
+TARGET_SECOND = 55
 
 MAX_ATTEMPTS = 3 # 1 initial attempt + 2 retries
 RETRY_DELAY = 60 # Seconds to wait before retrying if "Vào học" isn't found
 # ---------------------
 
 def wait_until_target_time():
-    """Calculates time until the specific DAY and TIME and pauses the script until then."""
-    if DAY < 2 or DAY > 8:
-        raise ValueError("Invalid DAY in configuration. Must be between 2 (Monday) and 8 (Sunday).")
-
+    """Calculates time until the specific TARGET TIME today (or tomorrow) and pauses the script."""
     now = datetime.datetime.now()
     target_time = now.replace(hour=TARGET_HOUR, minute=TARGET_MINUTE, second=TARGET_SECOND, microsecond=0)
     
-    # Python's weekday(): Monday is 0, Sunday is 6. 
-    # K12Online's DAY: Monday is 2, Sunday is 8.
-    target_weekday = DAY - 2 
-    
-    days_ahead = target_weekday - now.weekday()
-    
-    # If the target day has already passed this week, OR it's today but the time has already passed, set it to next week
-    if days_ahead < 0 or (days_ahead == 0 and now >= target_time):
-        days_ahead += 7
+    # If the target time has already passed today, set it to run tomorrow at that time
+    if now >= target_time:
+        target_time += datetime.timedelta(days=1)
         
-    target_time += datetime.timedelta(days=days_ahead)
-    
     wait_seconds = (target_time - now).total_seconds()
     
     print(f"[{now.strftime('%H:%M:%S')}] Script started.")
-    print(f"-> Selected Day: {DAY} (K12 Format)")
-    print(f"-> Waiting until {target_time.strftime('%A, %Y-%m-%d %H:%M:%S')} to launch the browser...")
+    print(f"-> Selected Timetable Column: Day {DAY} (K12 Format)")
+    print(f"-> Waiting until {target_time.strftime('%Y-%m-%d %H:%M:%S')} to launch the browser...")
     
     # Sleep until the exact target time
     time.sleep(wait_seconds)
@@ -147,6 +138,9 @@ def main():
     # 2. Setup WebDriver
     options = webdriver.ChromeOptions()
     options.add_argument("--start-maximized")
+    # Uncomment the next line if you want to run it without seeing the browser pop up
+    # options.add_argument("--headless")
+    
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
     wait = WebDriverWait(driver, 15)
     short_wait = WebDriverWait(driver, 3)

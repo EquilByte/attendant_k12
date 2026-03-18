@@ -9,8 +9,8 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 # --- CONFIGURATION ---
-ACCOUNT_USERNAME = "hungnk1905"
-ACCOUNT_PASSWORD = "Viettel2025@"
+ACCOUNT_USERNAME = "USERNAME"
+ACCOUNT_PASSWORD = "PASSWORD"
 
 # Which column to check on the timetable?
 # 2 = Monday, 3 = Tuesday, 4 = Wednesday, 5 = Thursday, 6 = Friday, 7 = Saturday, 8 = Sunday

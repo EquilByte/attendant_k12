@@ -6,7 +6,7 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 # --- CONFIGURATION ---
 ACCOUNT_USERNAME = "hungnk1905"
@@ -16,10 +16,10 @@ ACCOUNT_PASSWORD = "Viettel2025@"
 # 2 = Monday, 3 = Tuesday, 4 = Wednesday, 5 = Thursday, 6 = Friday, 7 = Saturday, 8 = Sunday
 DAY = 4
 
-# What time?
-TARGET_HOUR = 19
-TARGET_MINUTE = 28
-TARGET_SECOND = 20
+# What time should the script automatically start running today (or tomorrow)?
+TARGET_HOUR = 7
+TARGET_MINUTE = 10
+TARGET_SECOND = 30
 
 MAX_ATTEMPTS = 3 # 1 initial attempt + 2 retries
 RETRY_DELAY = 60 # Seconds to wait before retrying if "Vào học" isn't found
@@ -44,14 +44,12 @@ def wait_until_target_time():
     time.sleep(wait_seconds)
     print(f"\n[{datetime.datetime.now().strftime('%H:%M:%S')}] Time to join the class! Launching browser...")
 
-def attempt_to_join_class(driver, wait, short_wait):
+def attempt_to_join_class(driver, wait):
     """The core logic to navigate K12Online and find the join button."""
     try:
         # STEP 1: Go to K12Online
         print("1. Opening K12Online...")
         driver.get("https://k12online.vn/")
-
-        time.sleep(5)
         
         # Check if we need to log in
         try:
@@ -102,29 +100,36 @@ def attempt_to_join_class(driver, wait, short_wait):
             print(f" -> Clicked class {index + 1}, waiting for popup...")
             
             try:
-                popup_active = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.popover")))
+                # 1. Wait for the popup to be strictly VISIBLE on screen
+                active_popup = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "div.popover")))
+                time.sleep(0.5) # Let the Bootstrap animation finish
                 
-                # Search strictly for the "Vào học" button inside the popup
-                join_btn_xpath = ".//a[contains(text(), 'Vào học')]"
-                join_btn = short_wait.until(EC.element_to_be_clickable((popup_active, By.XPATH, join_btn_xpath)))
+                # 2. Look INSIDE that specific visible popup for the button
+                try:
+                    join_btn = active_popup.find_element(By.XPATH, ".//a[contains(normalize-space(), 'Vào học')]")
+                    
+                    print(" -> Found 'Vào học' button! Clicking it...")
+                    driver.execute_script("arguments[0].click();", join_btn)
+                    
+                    # K12Online opens Zoom/Classroom in a new tab. Switch to it:
+                    time.sleep(3)
+                    if len(driver.window_handles) > 1:
+                        driver.switch_to.window(driver.window_handles[-1])
+                        print("Switched to the new class tab.")
+                    
+                    return True # Successfully joined!
                 
-                # If found, click it!
-                print(" -> Found 'Vào học' button! Clicking it...")
-                driver.execute_script("arguments[0].click();", join_btn)
-                
-                # K12Online opens Zoom/Classroom in a new tab. Switch to it:
-                time.sleep(3)
-                if len(driver.window_handles) > 1:
-                    driver.switch_to.window(driver.window_handles[-1])
-                    print("Switched to the new class tab.")
-                
-                return True # Successfully joined!
-
+                except NoSuchElementException:
+                    print(" -> This class currently shows 'Xem lại' or hasn't started yet.")
+                    
             except TimeoutException:
-                print(" -> This class currently shows 'Xem lại' or hasn't started. Closing popup...")
-                # Click the body to dismiss the current popup before trying the next one
-                webdriver.ActionChains(driver).move_by_offset(0, 0).click().perform()
-                time.sleep(1)
+                print(" -> Popup didn't appear properly.")
+
+            # Close the current popup by clicking outside before checking the next class
+            print(" -> Closing popup and checking the next one...")
+            body = driver.find_element(By.TAG_NAME, "body")
+            webdriver.ActionChains(driver).move_to_element_with_offset(body, 0, 0).click().perform()
+            time.sleep(1)
 
         print("No active classes currently have the 'Vào học' button.")
         return False
@@ -140,29 +145,26 @@ def main():
     # 2. Setup WebDriver
     options = webdriver.ChromeOptions()
     options.add_argument("--start-maximized")
-    # Uncomment the next line if you want to run it without seeing the browser pop up
     # options.add_argument("--headless")
     
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
     wait = WebDriverWait(driver, 15)
-    short_wait = WebDriverWait(driver, 3)
     
     # 3. Execution & Retry Logic
     success = False
     for attempt in range(1, MAX_ATTEMPTS + 1):
         print(f"\n--- ATTEMPT {attempt} OF {MAX_ATTEMPTS} ---")
-        success = attempt_to_join_class(driver, wait, short_wait)
+        success = attempt_to_join_class(driver, wait)
         
         if success:
-            print("\n 🎉 SUCCESS! Joined the class.")
+            print("\n🎉 SUCCESS! Joined the class.")
             break
         else:
             if attempt < MAX_ATTEMPTS:
-                now = datetime.datetime.now()
-                print(f"\n[{now.strftime('%H:%M:%S')}] ⚠️ Failed to join. Teacher might be late. Retrying in {RETRY_DELAY} seconds...")
+                print(f"\n⚠️ Failed to join. Teacher might be late. Retrying in {RETRY_DELAY} seconds...")
                 time.sleep(RETRY_DELAY)
             else:
-                print("\n ❌ Max retries reached. Could not join the class.")
+                print("\n❌ Max retries reached. Could not join the class.")
 
     # 4. Keep browser open until manually closed
     print("\n---------------------------------------------------------")

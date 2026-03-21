@@ -14,14 +14,14 @@ ACCOUNT_PASSWORD = "PASSWORD"
 
 # Which column to check on the timetable?
 # 2 = Monday, 3 = Tuesday, 4 = Wednesday, 5 = Thursday, 6 = Friday, 7 = Saturday, 8 = Sunday
-DAY = 4
+DAY = 7
 
 # What time should the script automatically start running today (or tomorrow)?
 TARGET_HOUR = 7
 TARGET_MINUTE = 10
-TARGET_SECOND = 30
+TARGET_SECOND = 10
 
-MAX_ATTEMPTS = 3 # 1 initial attempt + 2 retries
+MAX_ATTEMPTS = 10 # 1 initial attempt + 2 retries
 RETRY_DELAY = 60 # Seconds to wait before retrying if "Vào học" isn't found
 # ---------------------
 
@@ -170,6 +170,9 @@ def main():
     print("\n---------------------------------------------------------")
     input("The script has finished. Press ENTER in this console to close the browser...")
     driver.quit()
+    
+    end_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"\n[{end_time}] Browser closed. Script completely stopped.")
 
 if __name__ == "__main__":
     main()
